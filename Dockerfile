@@ -1,4 +1,4 @@
-# Stage 1: Bun Builder (Compiles JS to Standalone Binaries)
+# Stage 1: Bun Builder
 FROM oven/bun:1.2 AS builder
 
 ARG BRUNO_VERSION=3.3.0
@@ -7,16 +7,18 @@ ARG NEWMAN_VERSION=6.2.2
 WORKDIR /build
 
 # Install and Compile Bruno CLI
+# We allow post-install scripts so Bruno can set up its internal CLI structure
 RUN bun add @usebruno/cli@${BRUNO_VERSION} && \
+    bun pm untrusted --allow && \
     bun build ./node_modules/@usebruno/cli/bin/cli.js \
-    --compile --target=bun-linux-x64-static --outfile bru
+    --compile --target=bun-linux-x64 --outfile bru
 
 # Install and Compile Newman
 RUN bun add newman@${NEWMAN_VERSION} && \
     bun build ./node_modules/newman/bin/newman.js \
-    --compile --target=bun-linux-x64-static --outfile newman
+    --compile --target=bun-linux-x64 --outfile newman
 
-# Stage 2: Binary Fetcher (Static Tools)
+# Stage 2: Binary Fetcher
 FROM fedora:44 AS binfetch
 RUN dnf -y install ca-certificates curl && dnf clean all
 
