@@ -56,7 +56,7 @@ RUN dnf -y install \
 
 # Copy tools from external images
 COPY --from=docker.io/library/docker:26-cli /usr/local/bin/docker /usr/local/bin/docker
-COPY --from=rancher/kubectl:v1.31.14 /usr/local/bin/kubectl /usr/local/bin/kubectl
+COPY --from=rancher/kubectl:v1.31.14 /bin/kubectl /usr/local/bin/kubectl
 COPY --from=docker.io/kindest/node:v1.30.0 /usr/local/bin/kind /usr/local/bin/kind
 COPY --from=docker.io/alpine/helm:3.15.3 /usr/bin/helm /usr/local/bin/helm
 
