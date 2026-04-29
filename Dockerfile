@@ -1,6 +1,18 @@
-# Stage 1: Fetch and Extract Binaries
+# Stage 1: Tool Builder (NPM only lives here)
+FROM node:24-slim AS builder
+# renovate: datasource=npm depName=@usebruno/cli
+ARG BRUNO_VERSION=3.3.0
+# renovate: datasource=npm depName=newman
+ARG NEWMAN_VERSION=6.2.2
+
+# Install tools into a clean prefix
+RUN npm install -g --prefix /node_tools \
+    "@usebruno/cli@${BRUNO_VERSION}" \
+    "newman@${NEWMAN_VERSION}"
+
+# Stage 2: Binary Fetcher
 FROM fedora:44 AS binfetch
-RUN dnf -y install ca-certificates curl gzip tar cpio findutils && dnf clean all
+RUN dnf -y install ca-certificates curl && dnf clean all
 
 # renovate: datasource=github-releases depName=argoproj/argo-cd
 ARG ARGOCD_VERSION=v3.3.8
@@ -18,55 +30,28 @@ RUN curl -fsSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/mast
     mv kustomize /usr/local/bin/kustomize && \
     chmod +x /usr/local/bin/kustomize
 
-# Bruno RPM Handling
-# renovate: datasource=github-releases depName=usebruno/bruno
-ARG BRUNO_VERSION=v3.3.0
-RUN curl -fsSL -o /tmp/bruno.rpm "https://github.com/usebruno/bruno/releases/download/${BRUNO_VERSION}/bruno_${BRUNO_VERSION#v}_x86_64_linux.rpm"
-
-# Extract only the JS application files from the RPM
-RUN mkdir -p /tmp/extract && cd /tmp/extract && \
-    rpm2cpio /tmp/bruno.rpm | cpio -idmv && \
-    mkdir -p /usr/local/lib/bruno-cli && \
-    # Dynamically find the app directory to handle path variations (opt/bruno vs usr/lib/bruno)
-    APP_PATH=$(find . -type d -path "*/resources/app" | head -n 1) && \
-    cp -r ${APP_PATH}/* /usr/local/lib/bruno-cli/
-
-# Stage 2: Final Image
+# Stage 3: Final Image
 FROM fedora:44
 
-# Minimal runtime dependencies
+# Minimal runtime: nodejs is the only "heavy" requirement
 RUN dnf -y install --setopt=install_weak_deps=False \
-    ca-certificates \
-    bash \
-    git \
-    curl \
-    shadow-utils \
-    libstdc++ \
-    libatomic \
-    nodejs \
-    && dnf clean all && rm -rf /var/cache/dnf
+    ca-certificates bash git curl shadow-utils libstdc++ libatomic nodejs \
+    && dnf clean all
 
-# 1. Copy CLI tools from external images
+# 1. Copy K8s/Docker/Helm binaries
 COPY --from=docker.io/library/docker:26-cli /usr/local/bin/docker /usr/local/bin/docker
 COPY --from=registry.k8s.io/kubectl:v1.32.0 /bin/kubectl /usr/local/bin/kubectl
 COPY --from=docker.io/alpine/helm:4.1.1 /usr/bin/helm /usr/local/bin/helm
 
-# 2. Copy tools from binfetch stage
-COPY --from=binfetch /usr/local/bin/argocd /usr/local/bin/argocd
-COPY --from=binfetch /usr/local/bin/kustomize /usr/local/bin/kustomize
-COPY --from=binfetch /usr/local/bin/kind /usr/local/bin/kind
+# 2. Copy tools from binfetch
+COPY --from=binfetch /usr/local/bin/ /usr/local/bin/
 
-# 3. Copy Newman (Alpine-sourced JS files)
-COPY --from=postman/newman:latest /usr/local/lib/node_modules /usr/local/lib/node_modules
-RUN ln -sf /usr/local/lib/node_modules/newman/bin/newman.js /usr/local/bin/newman && \
-    chmod +x /usr/local/bin/newman
+# 3. Copy Node tools from builder
+# This brings the JS code and the bin symlinks (bru, newman)
+COPY --from=builder /node_tools/lib/node_modules /usr/local/lib/node_modules
+COPY --from=builder /node_tools/bin/ /usr/local/bin/
 
-# 4. Copy Bruno (Extracted JS files)
-COPY --from=binfetch /usr/local/lib/bruno-cli /usr/local/lib/bruno-cli
-RUN ln -sf /usr/local/lib/bruno-cli/bin/cli.js /usr/local/bin/bru && \
-    chmod +x /usr/local/bin/bru
-
-# Final Environment Setup
+# Environment Configuration
 ENV NODE_PATH=/usr/local/lib/node_modules
 ENV PATH="/usr/local/bin:${PATH}"
 
