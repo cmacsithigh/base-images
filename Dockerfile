@@ -14,14 +14,18 @@ RUN bun install && bun pm trust --all
 
 # 3. Compile Bruno CLI
 # We look for the entry point in the package.json of the installed module
-RUN BRU_PATH=$(node -e "echo require.resolve('@usebruno/cli')") || \
-    BRU_PATH=$(find ./node_modules/@usebruno/cli -name "cli.js" | head -n 1) && \
-    bun build "$BRU_PATH" --compile --target=bun-linux-x64 --outfile bru
+RUN BRU_PATH=node_modules/@usebruno/cli/bruno.js && \
+    bun build "$BRU_PATH" \
+    --compile \
+    --target=bun-linux-x64 \
+    --outfile bru
 
 # 4. Compile Newman
-RUN NEWMAN_PATH=$(node -e "echo require.resolve('newman')") || \
-    NEWMAN_PATH=$(find ./node_modules/newman -name "newman.js" | head -n 1) && \
-    bun build "$NEWMAN_PATH" --compile --target=bun-linux-x64 --outfile newman
+RUN NEWMAN_PATH=node_modules/newman/bin/newman.js && \
+    bun build "$NEWMAN_PATH" \
+    --compile \
+    --target=bun-linux-x64 \
+    --outfile bru
 
 # Stage 2: Binary Fetcher
 FROM fedora:44 AS binfetch
