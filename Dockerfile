@@ -18,16 +18,14 @@ RUN curl -fsSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/mast
     mv kustomize /usr/local/bin/kustomize && \
     chmod +x /usr/local/bin/kustomize
 
-# Bruno CLI Standalone Binary
+# Fetch Bruno RPM
 # renovate: datasource=github-releases depName=usebruno/bruno
 ARG BRUNO_VERSION=v3.3.0
-RUN curl -fsSL -o /usr/local/bin/bru "https://github.com/usebruno/bruno/releases/download/${BRUNO_VERSION}/bruno-cli-linux-x86_64" && \
-    chmod +x /usr/local/bin/bru
+RUN curl -fsSL -o /tmp/bruno.rpm "https://github.com/usebruno/bruno/releases/download/${BRUNO_VERSION}/bruno-cli_${BRUNO_VERSION#v}_x86_64.rpm"
 
 # Stage 2: Final Image
 FROM fedora:44
 
-# Essential libraries for binary compatibility (needed for Node/Newman)
 RUN dnf -y install \
     ca-certificates \
     bash \
@@ -39,18 +37,21 @@ RUN dnf -y install \
     procps-ng \
     && dnf clean all
 
-# 1. Copy Docker/K8s/Helm binaries
+# Install Bruno via the RPM copied from binfetch
+COPY --from=binfetch /tmp/bruno.rpm /tmp/bruno.rpm
+RUN dnf -y install /tmp/bruno.rpm && dnf clean all && rm /tmp/bruno.rpm
+
+# Copy Docker/K8s/Helm binaries
 COPY --from=docker.io/library/docker:26-cli /usr/local/bin/docker /usr/local/bin/docker
 COPY --from=registry.k8s.io/kubectl:v1.32.0 /bin/kubectl /usr/local/bin/kubectl
 COPY --from=docker.io/alpine/helm:4.1.1 /usr/bin/helm /usr/local/bin/helm
 
-# 2. Copy tools from binfetch stage
+# Copy tools from binfetch stage
 COPY --from=binfetch /usr/local/bin/argocd /usr/local/bin/argocd
 COPY --from=binfetch /usr/local/bin/kustomize /usr/local/bin/kustomize
 COPY --from=binfetch /usr/local/bin/kind /usr/local/bin/kind
-COPY --from=binfetch /usr/local/bin/bru /usr/local/bin/bru
 
-# 3. Copy Newman and its Node environment from official image
+# Copy Newman and Node from official Newman image
 COPY --from=postman/newman:latest /usr/local/bin/node /usr/local/bin/node
 COPY --from=postman/newman:latest /usr/local/bin/newman /usr/local/bin/newman
 COPY --from=postman/newman:latest /usr/local/lib/node_modules /usr/local/lib/node_modules
