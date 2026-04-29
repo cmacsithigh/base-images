@@ -1,6 +1,7 @@
 # Stage 1: Fetch and Extract Binaries
 FROM fedora:44 AS binfetch
-RUN dnf -y install ca-certificates curl gzip tar && dnf clean all
+# Added cpio to the install list
+RUN dnf -y install ca-certificates curl gzip tar cpio && dnf clean all
 
 # renovate: datasource=github-releases depName=argoproj/argo-cd
 ARG ARGOCD_VERSION=v3.3.8
@@ -23,7 +24,7 @@ RUN curl -fsSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/mast
 ARG BRUNO_VERSION=v3.3.0
 RUN curl -fsSL -o /tmp/bruno.rpm "https://github.com/usebruno/bruno/releases/download/${BRUNO_VERSION}/bruno_${BRUNO_VERSION#v}_x86_64_linux.rpm"
 
-# Extract only the JS application files from the RPM (skips the GUI binaries)
+# Extract only the JS application files from the RPM
 RUN mkdir -p /tmp/extract && cd /tmp/extract && \
     rpm2cpio /tmp/bruno.rpm | cpio -idmv && \
     mkdir -p /usr/local/lib/bruno-cli && \
@@ -44,12 +45,12 @@ RUN dnf -y install --setopt=install_weak_deps=False \
     nodejs \
     && dnf clean all && rm -rf /var/cache/dnf
 
-# 1. Copy CLI tools
+# 1. Copy CLI tools from external images
 COPY --from=docker.io/library/docker:26-cli /usr/local/bin/docker /usr/local/bin/docker
 COPY --from=registry.k8s.io/kubectl:v1.32.0 /bin/kubectl /usr/local/bin/kubectl
 COPY --from=docker.io/alpine/helm:4.1.1 /usr/bin/helm /usr/local/bin/helm
 
-# 2. Copy binfetch tools
+# 2. Copy tools from binfetch stage
 COPY --from=binfetch /usr/local/bin/argocd /usr/local/bin/argocd
 COPY --from=binfetch /usr/local/bin/kustomize /usr/local/bin/kustomize
 COPY --from=binfetch /usr/local/bin/kind /usr/local/bin/kind
