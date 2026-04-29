@@ -1,4 +1,4 @@
-# Stage 1: Fetch External Binaries
+# Stage 1: Fetch External Binaries (Same as before)
 FROM fedora:44 AS binfetch
 RUN dnf -y install ca-certificates curl gzip tar && dnf clean all
 
@@ -18,7 +18,6 @@ RUN curl -fsSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/mast
     mv kustomize /usr/local/bin/kustomize && \
     chmod +x /usr/local/bin/kustomize
 
-# Fetch Bruno RPM using verified naming convention
 # renovate: datasource=github-releases depName=usebruno/bruno
 ARG BRUNO_VERSION=v3.3.0
 RUN curl -fsSL -o /tmp/bruno.rpm "https://github.com/usebruno/bruno/releases/download/${BRUNO_VERSION}/bruno_${BRUNO_VERSION#v}_x86_64_linux.rpm"
@@ -26,7 +25,6 @@ RUN curl -fsSL -o /tmp/bruno.rpm "https://github.com/usebruno/bruno/releases/dow
 # Stage 2: Final Image
 FROM fedora:44
 
-# Install Node.js (Fedora native) + dependencies
 RUN dnf -y install \
     ca-certificates \
     bash \
@@ -42,7 +40,9 @@ RUN dnf -y install \
 # Install Bruno via the RPM
 COPY --from=binfetch /tmp/bruno.rpm /tmp/bruno.rpm
 RUN dnf -y install /tmp/bruno.rpm && \
-    ln -sf /usr/bin/bruno /usr/local/bin/bru && \
+    # POINT TO CLI ENTRY POINT: This avoids the Electron root/sandbox issue
+    ln -sf /usr/lib/bruno/resources/app/bin/cli.js /usr/local/bin/bru && \
+    chmod +x /usr/local/bin/bru && \
     dnf clean all && rm /tmp/bruno.rpm
 
 # Copy Docker/K8s/Helm binaries
