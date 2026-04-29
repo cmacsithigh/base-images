@@ -67,7 +67,6 @@ RUN docker --version && \
     helm version && \
     argocd version --client || true && \
     kustomize version && \
-    node --version && \
     newman --version && \
     bru --version
 
