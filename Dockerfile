@@ -14,7 +14,7 @@ RUN bun install && bun pm trust --all
 
 # 3. Compile Bruno CLI
 # We look for the entry point in the package.json of the installed module
-RUN BRU_PATH=node_modules/@usebruno/cli/bruno.js && \
+RUN BRU_PATH=node_modules/@usebruno/cli/bin/bruno.js && \
     bun build "$BRU_PATH" \
     --compile \
     --target=bun-linux-x64 \
