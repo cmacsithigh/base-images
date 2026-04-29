@@ -18,7 +18,7 @@ RUN curl -fsSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/mast
     mv kustomize /usr/local/bin/kustomize && \
     chmod +x /usr/local/bin/kustomize
 
-# Fetch Bruno RPM using verified naming convention
+# Fetch Bruno RPM
 # renovate: datasource=github-releases depName=usebruno/bruno
 ARG BRUNO_VERSION=v3.3.0
 RUN curl -fsSL -o /tmp/bruno.rpm "https://github.com/usebruno/bruno/releases/download/${BRUNO_VERSION}/bruno_${BRUNO_VERSION#v}_x86_64_linux.rpm"
@@ -26,6 +26,7 @@ RUN curl -fsSL -o /tmp/bruno.rpm "https://github.com/usebruno/bruno/releases/dow
 # Stage 2: Final Image
 FROM fedora:44
 
+# Install Node.js (Fedora native) + dependencies
 RUN dnf -y install \
     ca-certificates \
     bash \
@@ -35,6 +36,7 @@ RUN dnf -y install \
     libstdc++ \
     libatomic \
     procps-ng \
+    nodejs \
     && dnf clean all
 
 # Install Bruno via the RPM
@@ -51,10 +53,11 @@ COPY --from=binfetch /usr/local/bin/argocd /usr/local/bin/argocd
 COPY --from=binfetch /usr/local/bin/kustomize /usr/local/bin/kustomize
 COPY --from=binfetch /usr/local/bin/kind /usr/local/bin/kind
 
-# Copy Newman and Node from official Newman image
-COPY --from=postman/newman:latest /usr/local/bin/node /usr/local/bin/node
-COPY --from=postman/newman:latest /usr/local/bin/newman /usr/local/bin/newman
+# Copy Newman source from official image (but NOT the alpine node binary)
 COPY --from=postman/newman:latest /usr/local/lib/node_modules /usr/local/lib/node_modules
+# Create symlink for Newman to use the native Fedora node
+RUN ln -s /usr/local/lib/node_modules/newman/bin/newman.js /usr/local/bin/newman && \
+    chmod +x /usr/local/bin/newman
 
 # Environment Configuration
 ENV NODE_PATH=/usr/local/lib/node_modules
@@ -67,6 +70,7 @@ RUN docker --version && \
     helm version && \
     argocd version --client || true && \
     kustomize version && \
+    node --version && \
     newman --version && \
     bru --version
 
