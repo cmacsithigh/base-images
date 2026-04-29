@@ -1,7 +1,6 @@
 # Stage 1: Fetch and Extract Binaries
 FROM fedora:44 AS binfetch
-# Added cpio to the install list
-RUN dnf -y install ca-certificates curl gzip tar cpio && dnf clean all
+RUN dnf -y install ca-certificates curl gzip tar cpio findutils && dnf clean all
 
 # renovate: datasource=github-releases depName=argoproj/argo-cd
 ARG ARGOCD_VERSION=v3.3.8
@@ -28,7 +27,9 @@ RUN curl -fsSL -o /tmp/bruno.rpm "https://github.com/usebruno/bruno/releases/dow
 RUN mkdir -p /tmp/extract && cd /tmp/extract && \
     rpm2cpio /tmp/bruno.rpm | cpio -idmv && \
     mkdir -p /usr/local/lib/bruno-cli && \
-    cp -r usr/lib/bruno/resources/app/* /usr/local/lib/bruno-cli/
+    # Dynamically find the app directory to handle path variations (opt/bruno vs usr/lib/bruno)
+    APP_PATH=$(find . -type d -path "*/resources/app" | head -n 1) && \
+    cp -r ${APP_PATH}/* /usr/local/lib/bruno-cli/
 
 # Stage 2: Final Image
 FROM fedora:44
