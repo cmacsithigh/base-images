@@ -1,4 +1,4 @@
-# Stage 1: Bun Builder
+# Stage 1: Build the Single-File Binaries
 FROM oven/bun:1.2 AS builder
 
 ARG BRUNO_VERSION=3.3.0
@@ -6,49 +6,47 @@ ARG NEWMAN_VERSION=6.2.2
 
 WORKDIR /build
 
-# 1. Create package.json
-RUN echo "{\"dependencies\": {\"@usebruno/cli\": \"${BRUNO_VERSION}\", \"newman\": \"${NEWMAN_VERSION}\"}}" > package.json
+# 1. Install Node.js & pkg (Needed because Bun can't bundle Newman's dynamic deps)
+RUN apt-get update && apt-get install -y nodejs npm
 
-# 2. Install and trust
-RUN bun install && bun pm trust --all
+# 2. Build Bruno with Bun (Standalone ELF)
+RUN bun add @usebruno/cli@${BRUNO_VERSION} && \
+    bun pm trust --all && \
+    BRU_PATH=$(find ./node_modules/@usebruno/cli -name "bru.js" | head -n 1) && \
+    bun build "$BRU_PATH" --compile --target=bun-linux-x64 --outfile bru_bin
 
-# 3. Compile Bruno CLI
-# We look for the entry point in the package.json of the installed module
- RUN BRU_PATH=node_modules/@usebruno/cli/bin/bru.js && \
-    bun build "$BRU_PATH" \
-    --compile \
-    --target=bun-linux-x64 \
-    --outfile bru
+# 3. Build Newman with Vercel pkg (Standalone ELF)
+# pkg handles the dynamic dependencies that Bun's compiler missed
+RUN npm install -g pkg && \
+    npm install newman@${NEWMAN_VERSION} && \
+    pkg ./node_modules/newman/bin/newman.js --targets node18-linux-x64 --output newman_bin
 
-# 4. Compile Newman
-RUN NEWMAN_PATH=node_modules/newman/bin/newman.js && \
-    bun build "$NEWMAN_PATH" \
-    --compile \
-    --target=bun-linux-x64 \
-    --outfile bru
-
-# Stage 2: Binary Fetcher
+# Stage 2: Binary Fetcher (Static Go-based tools)
 FROM fedora:44 AS binfetch
 RUN dnf -y install ca-certificates curl && dnf clean all
 
 ARG ARGOCD_VERSION=v3.3.8
-RUN curl -fsSL -o /usr/local/bin/argocd "https://github.com/argoproj/argo-cd/releases/download/${ARGOCD_VERSION}/argocd-linux-amd64" && chmod +x /usr/local/bin/argocd
+RUN curl -fsSL -o /usr/local/bin/argocd "https://github.com/argoproj/argo-cd/releases/download/${ARGOCD_VERSION}/argocd-linux-amd64" && \
+    chmod +x /usr/local/bin/argocd
 
 ARG KIND_VERSION=v0.27.0
-RUN curl -fsSL -o /usr/local/bin/kind "https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-linux-amd64" && chmod +x /usr/local/bin/kind
+RUN curl -fsSL -o /usr/local/bin/kind "https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-linux-amd64" && \
+    chmod +x /usr/local/bin/kind
 
 ARG KUSTOMIZE_VERSION=v5.8.1
 RUN curl -fsSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash -s -- "${KUSTOMIZE_VERSION#v}" && \
-    mv kustomize /usr/local/bin/kustomize && chmod +x /usr/local/bin/kustomize
+    mv kustomize /usr/local/bin/kustomize && \
+    chmod +x /usr/local/bin/kustomize
 
 # Stage 3: Final Production Image
 FROM fedora:44
 
+# Essential runtime libs only (NO NODEJS NEEDED!)
 RUN dnf -y install --setopt=install_weak_deps=False \
     ca-certificates bash git curl shadow-utils libstdc++ libatomic \
     && dnf clean all && rm -rf /var/cache/dnf
 
-# 1. Copy Docker/K8s/Helm
+# 1. Copy Docker/K8s/Helm from official static images
 COPY --from=docker.io/library/docker:26-cli /usr/local/bin/docker /usr/local/bin/docker
 COPY --from=registry.k8s.io/kubectl:v1.32.0 /bin/kubectl /usr/local/bin/kubectl
 COPY --from=docker.io/alpine/helm:4.1.1 /usr/bin/helm /usr/local/bin/helm
@@ -58,9 +56,9 @@ COPY --from=binfetch /usr/local/bin/argocd /usr/local/bin/argocd
 COPY --from=binfetch /usr/local/bin/kind /usr/local/bin/kind
 COPY --from=binfetch /usr/local/bin/kustomize /usr/local/bin/kustomize
 
-# 3. Copy the Bun-compiled binaries
-COPY --from=builder /build/bru /usr/local/bin/bru
-COPY --from=builder /build/newman /usr/local/bin/newman
+# 3. Copy our "Truly Single" Binaries (No symlinks)
+COPY --from=builder /build/bru_bin /usr/local/bin/bru
+COPY --from=builder /build/newman_bin /usr/local/bin/newman
 
 RUN chmod +x /usr/local/bin/*
 ENV PATH="/usr/local/bin:${PATH}"
