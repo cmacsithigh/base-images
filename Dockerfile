@@ -1,13 +1,4 @@
-# Stage 1: Node tools
-FROM node:24 AS node-tools
-# renovate: datasource=npm depName=newman
-ARG NEWMAN_VERSION=6.2.2
-# renovate: datasource=npm depName=@usebruno/cli
-ARG BRUNO_VERSION=3.3.0
-
-RUN npm install -g "newman@${NEWMAN_VERSION}" "@usebruno/cli@${BRUNO_VERSION}"
-
-# Stage 2: Binary Tools
+# Stage 1: Fetch External Binaries
 FROM fedora:44 AS binfetch
 RUN dnf -y install ca-certificates curl gzip tar && dnf clean all
 
@@ -27,8 +18,16 @@ RUN curl -fsSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/mast
     mv kustomize /usr/local/bin/kustomize && \
     chmod +x /usr/local/bin/kustomize
 
-# Stage 3: Final Image
+# Bruno CLI Standalone Binary
+# renovate: datasource=github-releases depName=usebruno/bruno
+ARG BRUNO_VERSION=v3.3.0
+RUN curl -fsSL -o /usr/local/bin/bru "https://github.com/usebruno/bruno/releases/download/${BRUNO_VERSION}/bruno-cli-linux-x86_64" && \
+    chmod +x /usr/local/bin/bru
+
+# Stage 2: Final Image
 FROM fedora:44
+
+# Essential libraries for binary compatibility (needed for Node/Newman)
 RUN dnf -y install \
     ca-certificates \
     bash \
@@ -40,25 +39,27 @@ RUN dnf -y install \
     procps-ng \
     && dnf clean all
 
+# 1. Copy Docker/K8s/Helm binaries
 COPY --from=docker.io/library/docker:26-cli /usr/local/bin/docker /usr/local/bin/docker
 COPY --from=registry.k8s.io/kubectl:v1.32.0 /bin/kubectl /usr/local/bin/kubectl
 COPY --from=docker.io/alpine/helm:4.1.1 /usr/bin/helm /usr/local/bin/helm
 
+# 2. Copy tools from binfetch stage
 COPY --from=binfetch /usr/local/bin/argocd /usr/local/bin/argocd
 COPY --from=binfetch /usr/local/bin/kustomize /usr/local/bin/kustomize
 COPY --from=binfetch /usr/local/bin/kind /usr/local/bin/kind
+COPY --from=binfetch /usr/local/bin/bru /usr/local/bin/bru
 
-COPY --from=node-tools /usr/local/bin/node /usr/local/bin/node
-COPY --from=node-tools /usr/local/lib/node_modules /usr/local/lib/node_modules
+# 3. Copy Newman and its Node environment from official image
+COPY --from=postman/newman:latest /usr/local/bin/node /usr/local/bin/node
+COPY --from=postman/newman:latest /usr/local/bin/newman /usr/local/bin/newman
+COPY --from=postman/newman:latest /usr/local/lib/node_modules /usr/local/lib/node_modules
 
-# Manually link Node binaries to ensure they point to the correct internal paths
-RUN ln -sf /usr/local/lib/node_modules/newman/bin/newman.js /usr/local/bin/newman && \
-    ln -sf /usr/local/lib/node_modules/@usebruno/cli/bin/cli.js /usr/local/bin/bru && \
-    chmod +x /usr/local/bin/newman /usr/local/bin/bru
-
+# Environment Configuration
 ENV NODE_PATH=/usr/local/lib/node_modules
 ENV PATH="/usr/local/bin:${PATH}"
 
+# Validation check
 RUN docker --version && \
     kubectl version --client && \
     kind version && \
