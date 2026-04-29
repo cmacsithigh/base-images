@@ -1,4 +1,3 @@
-# Stage 1: Build Node tools
 FROM node:24 AS node-tools
 
 # renovate: datasource=npm depName=newman
@@ -9,7 +8,6 @@ ARG BRUNO_VERSION=3.3.0
 RUN npm install -g "newman@${NEWMAN_VERSION}"
 RUN npm install -g "@usebruno/cli@${BRUNO_VERSION}"
 
-# Stage 2: Fetch Binary Tools
 FROM fedora:44 AS binfetch
 RUN dnf -y install ca-certificates curl gzip tar && dnf clean all
 
@@ -29,7 +27,6 @@ RUN curl -fsSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/mast
     mv kustomize /usr/local/bin/kustomize && \
     chmod +x /usr/local/bin/kustomize
 
-# Stage 3: Final Image
 FROM fedora:44
 RUN dnf -y install \
     ca-certificates \
@@ -38,14 +35,15 @@ RUN dnf -y install \
     curl \
     shadow-utils \
     libstdc++ \
+    libatomic \
+    procps-ng \
     && dnf clean all
 
-# Copy tools from official external images (Renovate tracks these automatically)
+# Copy tools
 COPY --from=docker.io/library/docker:26-cli /usr/local/bin/docker /usr/local/bin/docker
 COPY --from=registry.k8s.io/kubectl:v1.32.0 /bin/kubectl /usr/local/bin/kubectl
 COPY --from=docker.io/alpine/helm:4.1.1 /usr/bin/helm /usr/local/bin/helm
 
-# Copy tools from previous build stages
 COPY --from=binfetch /usr/local/bin/argocd /usr/local/bin/argocd
 COPY --from=binfetch /usr/local/bin/kustomize /usr/local/bin/kustomize
 COPY --from=binfetch /usr/local/bin/kind /usr/local/bin/kind
