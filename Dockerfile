@@ -51,9 +51,10 @@ COPY --from=binfetch /usr/local/bin/kind /usr/local/bin/kind
 COPY --from=node-tools /usr/local/bin/node /usr/local/bin/node
 COPY --from=node-tools /usr/local/lib/node_modules /usr/local/lib/node_modules
 
-# Recreate symlinks to fix MODULE_NOT_FOUND errors
-RUN ln -s /usr/local/lib/node_modules/newman/bin/newman.js /usr/local/bin/newman && \
-    ln -s /usr/local/lib/node_modules/@usebruno/cli/bin/cli.js /usr/local/bin/bru
+# Manually link Node binaries to ensure they point to the correct internal paths
+RUN ln -sf /usr/local/lib/node_modules/newman/bin/newman.js /usr/local/bin/newman && \
+    ln -sf /usr/local/lib/node_modules/@usebruno/cli/bin/cli.js /usr/local/bin/bru && \
+    chmod +x /usr/local/bin/newman /usr/local/bin/bru
 
 ENV NODE_PATH=/usr/local/lib/node_modules
 ENV PATH="/usr/local/bin:${PATH}"
