@@ -1,4 +1,4 @@
-FROM docker.io/library/node:24 AS node-tools
+FROM node:24 AS node-tools
 
 ARG NEWMAN_VERSION=latest
 ARG BRUNO_VERSION=latest
