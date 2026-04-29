@@ -1,46 +1,32 @@
 # Stage 1: Build Node tools
 FROM node:24 AS node-tools
-ARG NEWMAN_VERSION=latest
-ARG BRUNO_VERSION=latest
+# Pinned for Renovate tracking
+ARG NEWMAN_VERSION=6.2.2
+ARG BRUNO_VERSION=3.3.0
 
-# Newman (Postman CLI)
-RUN if [ "$NEWMAN_VERSION" = "latest" ]; then \
-    npm install -g newman; \
-    else \
-    npm install -g "newman@${NEWMAN_VERSION}"; \
-    fi
-
-# Bruno CLI (provides `bru`)
-RUN if [ "$BRUNO_VERSION" = "latest" ]; then \
-    npm install -g @usebruno/cli; \
-    else \
-    npm install -g "@usebruno/cli@${BRUNO_VERSION}"; \
-    fi
+RUN npm install -g "newman@${NEWMAN_VERSION}"
+RUN npm install -g "@usebruno/cli@${BRUNO_VERSION}"
 
 # Stage 2: Fetch Binary Tools
 FROM fedora:44 AS binfetch
-ARG ARGOCD_VERSION=latest
-ARG KUSTOMIZE_VERSION=latest
+# Kubernetes 1.32 compatible toolset
+ARG ARGOCD_VERSION=v3.3.8
+ARG KUSTOMIZE_VERSION=v5.8.1
+ARG KIND_VERSION=v0.27.0
 
 RUN dnf -y install ca-certificates curl gzip tar && dnf clean all
 
 # Argo CD CLI
-RUN set -eux; \
-    if [ "$ARGOCD_VERSION" = "latest" ]; then \
-    ARGOCD_VERSION="v$(curl -fsSL https://raw.githubusercontent.com/argoproj/argo-cd/stable/VERSION)"; \
-    fi; \
-    curl -fsSL -o /usr/local/bin/argocd "https://github.com/argoproj/argo-cd/releases/download/${ARGOCD_VERSION}/argocd-linux-amd64"; \
+RUN curl -fsSL -o /usr/local/bin/argocd "https://github.com/argoproj/argo-cd/releases/download/${ARGOCD_VERSION}/argocd-linux-amd64" && \
     chmod +x /usr/local/bin/argocd
 
+# Kind CLI (v0.27.0 supports K8s 1.32)
+RUN curl -fsSL -o /usr/local/bin/kind "https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-linux-amd64" && \
+    chmod +x /usr/local/bin/kind
+
 # Kustomize
-RUN set -eux; \
-    if [ "$KUSTOMIZE_VERSION" = "latest" ]; then \
-    curl -fsSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash; \
-    mv kustomize /usr/local/bin/kustomize; \
-    else \
-    curl -fsSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash -s -- "$KUSTOMIZE_VERSION"; \
-    mv kustomize /usr/local/bin/kustomize; \
-    fi; \
+RUN curl -fsSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash -s -- "${KUSTOMIZE_VERSION#v}" && \
+    mv kustomize /usr/local/bin/kustomize && \
     chmod +x /usr/local/bin/kustomize
 
 # Stage 3: Final Image
@@ -56,13 +42,14 @@ RUN dnf -y install \
 
 # Copy tools from external images
 COPY --from=docker.io/library/docker:26-cli /usr/local/bin/docker /usr/local/bin/docker
-COPY --from=rancher/kubectl:v1.31.14 /bin/kubectl /usr/local/bin/kubectl
-COPY --from=docker.io/kindest/node:v1.30.0 /usr/local/bin/kind /usr/local/bin/kind
-COPY --from=docker.io/alpine/helm:3.15.3 /usr/bin/helm /usr/local/bin/helm
+# Using the official K8s registry for v1.32.0
+COPY --from=registry.k8s.io/kubectl:v1.32.0 /bin/kubectl /usr/local/bin/kubectl
+COPY --from=docker.io/alpine/helm:4.1.1 /usr/bin/helm /usr/local/bin/helm
 
 # Copy tools from previous stages
 COPY --from=binfetch /usr/local/bin/argocd /usr/local/bin/argocd
 COPY --from=binfetch /usr/local/bin/kustomize /usr/local/bin/kustomize
+COPY --from=binfetch /usr/local/bin/kind /usr/local/bin/kind
 COPY --from=node-tools /usr/local/bin/node /usr/local/bin/node
 COPY --from=node-tools /usr/local/bin/newman /usr/local/bin/newman
 COPY --from=node-tools /usr/local/bin/bru /usr/local/bin/bru
