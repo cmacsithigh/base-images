@@ -12,8 +12,8 @@ RUN apt-get update && apt-get install -y nodejs npm
 # 2. Build Bruno with Bun (Standalone ELF)
 RUN bun add @usebruno/cli@${BRUNO_VERSION} && \
     bun pm trust --all && \
-    BRU_PATH=$(find ./node_modules/@usebruno/cli -name "bru.js" | head -n 1) && \
-    bun build "$BRU_PATH" --compile --target=bun-linux-x64 --outfile bru_bin
+    BRU_PATH=$(find ./node_modules/@usebruno/cli/bin -name "bru.js" | head -n 1) && \
+    bun build "$BRU_PATH" --compile --target=bun-linux-x64-baseline --outfile bru_bin
 
 # 3. Build Newman with Vercel pkg (Standalone ELF)
 # pkg handles the dynamic dependencies that Bun's compiler missed
@@ -64,13 +64,13 @@ RUN chmod +x /usr/local/bin/*
 ENV PATH="/usr/local/bin:${PATH}"
 
 # Validation
-RUN docker --version && \
-    kubectl version --client && \
-    kind version && \
-    helm version && \
-    argocd version --client || true && \
-    kustomize version && \
-    newman --version && \
+RUN docker --version; \
+    kubectl version --client; \
+    kind version; \
+    helm version; \
+    argocd version --client || true; \
+    kustomize version; \
+    newman --version; \
     bru --version
 
 WORKDIR /workspace
