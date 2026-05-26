@@ -1,19 +1,12 @@
 # Stage 1: Build the Single-File Binaries
 FROM oven/bun:1.2 AS builder
 
-ARG BRUNO_VERSION=3.3.0
 ARG NEWMAN_VERSION=6.2.2
 
 WORKDIR /build
 
 # 1. Install Node.js & pkg (Needed because Bun can't bundle Newman's dynamic deps)
 RUN apt-get update && apt-get install -y nodejs npm
-
-# 2. Build Bruno with Bun (Standalone ELF)
-RUN bun add @usebruno/cli@${BRUNO_VERSION} && \
-    bun pm trust --all && \
-    BRU_PATH=$(find ./node_modules/@usebruno/cli/bin -name "bru.js" | head -n 1) && \
-    bun build "$BRU_PATH" --compile --target=bun-linux-x64-baseline --outfile bru_bin
 
 # 3. Build Newman with Vercel pkg (Standalone ELF)
 # pkg handles the dynamic dependencies that Bun's compiler missed
@@ -56,9 +49,21 @@ COPY --from=binfetch /usr/local/bin/argocd /usr/local/bin/argocd
 COPY --from=binfetch /usr/local/bin/kind /usr/local/bin/kind
 COPY --from=binfetch /usr/local/bin/kustomize /usr/local/bin/kustomize
 
-# 3. Copy our "Truly Single" Binaries (No symlinks)
-COPY --from=builder /build/bru_bin /usr/local/bin/bru
+# 3. Copy our "Truly Single" Binaries
 COPY --from=builder /build/newman_bin /usr/local/bin/newman
+
+ARG BRUNO_VERSION=3.3.0
+
+RUN dnf -y install --setopt=install_weak_deps=False \
+    ca-certificates bash git curl shadow-utils libstdc++ libatomic \
+    nodejs npm \
+    && dnf clean all && rm -rf /var/cache/dnf
+
+RUN npm config set update-notifier false && \
+    npm config set fund false && \
+    npm config set audit false && \
+    npm install -g --prefix /usr/local @usebruno/cli@${BRUNO_VERSION} && \
+    npm cache clean --force
 
 RUN chmod +x /usr/local/bin/*
 ENV PATH="/usr/local/bin:${PATH}"
