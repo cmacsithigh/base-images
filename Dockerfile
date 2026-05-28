@@ -43,6 +43,7 @@ RUN dnf -y install --setopt=install_weak_deps=False \
 COPY --from=docker.io/library/docker:26-cli /usr/local/bin/docker /usr/local/bin/docker
 COPY --from=registry.k8s.io/kubectl:v1.32.0 /bin/kubectl /usr/local/bin/kubectl
 COPY --from=docker.io/alpine/helm:4.1.1 /usr/bin/helm /usr/local/bin/helm
+COPY --from=docker.io/stackrox/kube-linter:v0.8.3 /kube-linter /usr/local/bin/kube-linter
 
 # 2. Copy tools from binfetch
 COPY --from=binfetch /usr/local/bin/argocd /usr/local/bin/argocd
@@ -73,6 +74,7 @@ RUN docker --version; \
     kubectl version --client; \
     kind version; \
     helm version; \
+    kube-linter version; \
     argocd version --client || true; \
     kustomize version; \
     newman --version; \
