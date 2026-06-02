@@ -70,11 +70,6 @@ RUN npm config set update-notifier false && \
     npm install -g --prefix /usr/local @usebruno/cli@${BRUNO_VERSION} && \
     npm cache clean --force
 
-# Maven
-RUN curl -fsSL "https://dlcdn.apache.org/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz" \
-    | tar -xz -C /opt && \
-    ln -s /opt/apache-maven-${MAVEN_VERSION}/bin/mvn /usr/local/bin/mvn
-
 # Black Duck Detect
 RUN curl -fsSL -o /usr/local/bin/blackduck \
     https://detect.synopsys.com/detect.sh && \
