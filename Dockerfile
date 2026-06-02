@@ -54,10 +54,14 @@ COPY --from=binfetch /usr/local/bin/kustomize /usr/local/bin/kustomize
 COPY --from=builder /build/newman_bin /usr/local/bin/newman
 
 ARG BRUNO_VERSION=3.3.0
+ARG MAVEN_VERSION=3.9.9
+ARG ROXCTL_VERSION=4.4.0
+ARG BLACKDUCK_VERSION=latest
 
 RUN dnf -y install --setopt=install_weak_deps=False \
     ca-certificates bash git curl shadow-utils libstdc++ libatomic \
     nodejs npm \
+    java-17-openjdk-headless \
     && dnf clean all && rm -rf /var/cache/dnf
 
 RUN npm config set update-notifier false && \
@@ -65,6 +69,21 @@ RUN npm config set update-notifier false && \
     npm config set audit false && \
     npm install -g --prefix /usr/local @usebruno/cli@${BRUNO_VERSION} && \
     npm cache clean --force
+
+# Maven
+RUN curl -fsSL "https://dlcdn.apache.org/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz" \
+    | tar -xz -C /opt && \
+    ln -s /opt/apache-maven-${MAVEN_VERSION}/bin/mvn /usr/local/bin/mvn
+
+# Black Duck Detect
+RUN curl -fsSL -o /usr/local/bin/blackduck \
+    https://detect.synopsys.com/detect.sh && \
+    chmod +x /usr/local/bin/blackduck
+
+# Roxctl
+RUN curl -fsSL -o /usr/local/bin/roxctl \
+    "https://mirror.openshift.com/pub/rhacs/assets/${ROXCTL_VERSION}/bin/Linux/roxctl" && \
+    chmod +x /usr/local/bin/roxctl
 
 RUN chmod +x /usr/local/bin/*
 ENV PATH="/usr/local/bin:${PATH}"
@@ -78,7 +97,10 @@ RUN docker --version; \
     argocd version --client || true; \
     kustomize version; \
     newman --version; \
-    bru --version
+    bru --version; \
+    mvn -version; \
+    roxctl version || true; \
+    blackduck --help || true
 
 WORKDIR /workspace
 CMD ["bash"]
