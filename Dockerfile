@@ -61,7 +61,7 @@ ARG BLACKDUCK_VERSION=latest
 RUN dnf -y install --setopt=install_weak_deps=False \
     ca-certificates bash git curl shadow-utils libstdc++ libatomic \
     nodejs npm \
-    java-17-openjdk-devel \
+    java-17-openjdk \
     && dnf clean all && rm -rf /var/cache/dnf
 
 RUN npm config set update-notifier false && \
