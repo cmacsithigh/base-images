@@ -43,8 +43,8 @@ COPY --from=registry.k8s.io/kubectl:v1.32.0 /bin/kubectl /usr/local/bin/kubectl
 COPY --from=docker.io/alpine/helm:4.1.1 /usr/bin/helm /usr/bin/helm
 COPY --from=docker.io/stackrox/kube-linter:v0.8.3 /kube-linter /usr/local/bin/kube-linter
 
-# ADDED: Copy Black Duck Synopsys Detect wrapper script from the official image
-COPY --from=blackducksoftware/detect:9.10.0 /detect.sh /usr/local/bin/blackduck
+# FIXED: Correct path inside the official image is /app/detect.sh
+COPY --from=blackducksoftware/detect:9.10.0 /app/detect.sh /usr/local/bin/blackduck
 
 # 2. Copy tools from binfetch
 COPY --from=binfetch /usr/local/bin/argocd /usr/local/bin/argocd
