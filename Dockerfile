@@ -14,7 +14,7 @@ RUN npm install -g pkg && \
 
 # Stage 2: Binary Fetcher (Static Go-based tools & Scripts)
 FROM fedora:44 AS binfetch
-RUN dnf -y install ca-certificates curl && dnf clean all
+RUN dnf -y install ca-certificates curl tar gzip && dnf clean all
 
 ARG ARGOCD_VERSION=v3.3.8
 RUN curl -fsSL -o /usr/local/bin/argocd "https://github.com/argoproj/argo-cd/releases/download/${ARGOCD_VERSION}/argocd-linux-amd64" && \
@@ -38,6 +38,11 @@ RUN curl -fsSL -o /usr/local/bin/roxctl \
     "https://mirror.openshift.com/pub/rhacs/assets/${ROXCTL_VERSION}/bin/Linux/roxctl" && \
     chmod +x /usr/local/bin/roxctl
 
+# FIXED: Fetch and extract official OpenJDK 17 inside the binfetcher stage
+RUN mkdir -p /usr/lib/jvm/openjdk-17 && \
+    curl -fsSL "https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_linux-x64_bin.tar.gz" | \
+    tar -xzf - --strip-components=1 -C /usr/lib/jvm/openjdk-17
+
 # Stage 3: Final Production Image
 FROM fedora:44
 
@@ -59,16 +64,18 @@ COPY --from=binfetch /usr/local/bin/kustomize /usr/local/bin/kustomize
 COPY --from=binfetch /usr/local/bin/blackduck /usr/local/bin/blackduck
 COPY --from=binfetch /usr/local/bin/roxctl /usr/local/bin/roxctl
 
+# FIXED: Copy the standalone OpenJDK binaries from Stage 2
+COPY --from=binfetch /usr/lib/jvm/openjdk-17 /usr/lib/jvm/openjdk-17
+
 # 3. Copy our "Truly Single" Binaries
 COPY --from=builder /build/newman_bin /usr/local/bin/newman
 
 ARG BRUNO_VERSION=3.3.0
 ARG MAVEN_VERSION=3.9.9
 
-# FIXED: Passing 'java-17' forces DNF's virtual provider mapping system to lock down OpenJDK 17 
+# Install remaining package-based utilities
 RUN dnf -y install --setopt=install_weak_deps=False \
     nodejs npm \
-    java-17 \
     maven \
     && dnf clean all && rm -rf /var/cache/dnf
 
@@ -79,8 +86,12 @@ RUN npm config set update-notifier false && \
     npm install -g --prefix /usr/local @usebruno/cli@${BRUNO_VERSION} && \
     npm cache clean --force
 
+# Symlink OpenJDK binaries to systemic path and export environment variables
+RUN ln -s /usr/lib/jvm/openjdk-17/bin/* /usr/local/bin/
+ENV JAVA_HOME=/usr/lib/jvm/openjdk-17
+ENV PATH="${JAVA_HOME}/bin:/usr/local/bin:${PATH}"
+
 RUN chmod +x /usr/local/bin/*
-ENV PATH="/usr/local/bin:${PATH}"
 
 # Validation
 RUN docker --version; \
@@ -92,6 +103,7 @@ RUN docker --version; \
     kustomize version; \
     newman --version; \
     bru --version; \
+    java -version; \
     mvn -version; \
     roxctl version || true; \
     blackduck --help || true
