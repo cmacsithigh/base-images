@@ -44,7 +44,7 @@ COPY --from=docker.io/alpine/helm:4.1.1 /usr/bin/helm /usr/bin/helm
 COPY --from=docker.io/stackrox/kube-linter:v0.8.3 /kube-linter /usr/local/bin/kube-linter
 
 # FIXED: Correct path inside the official image is /app/detect.sh
-COPY --from=blackducksoftware/detect:9.10.0 /app/detect.sh /usr/local/bin/blackduck
+COPY --from=blackducksoftware/detect:9.10.1 /app/detect.sh /usr/local/bin/blackduck
 
 # 2. Copy tools from binfetch
 COPY --from=binfetch /usr/local/bin/argocd /usr/local/bin/argocd
