@@ -12,7 +12,7 @@ RUN npm install -g pkg && \
     npm install newman@${NEWMAN_VERSION} && \
     pkg ./node_modules/newman/bin/newman.js --targets node18-linux-x64 --output newman_bin
 
-# Stage 2: Binary Fetcher (Static Go-based tools)
+# Stage 2: Binary Fetcher (Static Go-based tools & Scripts)
 FROM fedora:44 AS binfetch
 RUN dnf -y install ca-certificates curl && dnf clean all
 
@@ -29,6 +29,9 @@ RUN curl -fsSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/mast
     mv kustomize /usr/local/bin/kustomize && \
     chmod +x /usr/local/bin/kustomize
 
+RUN curl -fsSL -o /usr/local/bin/blackduck https://detect.blackduck.com/detect.sh && \
+    chmod +x /usr/local/bin/blackduck
+
 # Stage 3: Final Production Image
 FROM fedora:44
 
@@ -43,13 +46,11 @@ COPY --from=registry.k8s.io/kubectl:v1.32.0 /bin/kubectl /usr/local/bin/kubectl
 COPY --from=docker.io/alpine/helm:4.1.1 /usr/bin/helm /usr/bin/helm
 COPY --from=docker.io/stackrox/kube-linter:v0.8.3 /kube-linter /usr/local/bin/kube-linter
 
-# FIXED: Correct path inside the official image is /app/detect.sh
-COPY --from=blackducksoftware/detect:9.10.0 /app/detect.sh /usr/local/bin/blackduck
-
-# 2. Copy tools from binfetch
+# 2. Copy tools from binfetch (Now includes Black Duck)
 COPY --from=binfetch /usr/local/bin/argocd /usr/local/bin/argocd
 COPY --from=binfetch /usr/local/bin/kind /usr/local/bin/kind
 COPY --from=binfetch /usr/local/bin/kustomize /usr/local/bin/kustomize
+COPY --from=binfetch /usr/local/bin/blackduck /usr/local/bin/blackduck
 
 # 3. Copy our "Truly Single" Binaries
 COPY --from=builder /build/newman_bin /usr/local/bin/newman
