@@ -70,11 +70,6 @@ RUN npm config set update-notifier false && \
     npm install -g --prefix /usr/local @usebruno/cli@${BRUNO_VERSION} && \
     npm cache clean --force
 
-# Black Duck Detect
-RUN curl -fsSL -o /usr/local/bin/blackduck \
-    https://detect.synopsys.com/detect.sh && \
-    chmod +x /usr/local/bin/blackduck
-
 # Roxctl
 RUN curl -fsSL -o /usr/local/bin/roxctl \
     "https://mirror.openshift.com/pub/rhacs/assets/${ROXCTL_VERSION}/bin/Linux/roxctl" && \
