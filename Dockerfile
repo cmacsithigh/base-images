@@ -1,5 +1,5 @@
 # Stage 1: Build the Single-File Binaries
-FROM oven/bun:1.2 AS builder
+FROM oven/bun:1.3 AS builder
 ARG NEWMAN_VERSION=6.2.2
 WORKDIR /build
 
