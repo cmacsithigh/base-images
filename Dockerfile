@@ -32,12 +32,17 @@ RUN curl -fsSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/mast
 RUN curl -fsSL -o /usr/local/bin/blackduck https://detect.blackduck.com/detect.sh && \
     chmod +x /usr/local/bin/blackduck
 
+ARG ROXCTL_VERSION=4.4.0
+RUN curl -fsSL -o /usr/local/bin/roxctl \
+    "https://mirror.openshift.com/pub/rhacs/assets/${ROXCTL_VERSION}/bin/Linux/roxctl" && \
+    chmod +x /usr/local/bin/roxctl
+
 # Stage 3: Final Production Image
 FROM fedora:44
 
-# Essential runtime libs only + Java (Required for Maven & Black Duck Detect)
+# Essential runtime libs only + Java
 RUN dnf -y install --setopt=install_weak_deps=False \
-    ca-certificates bash git curl shadow-utils libstdc++ libatomic java-17-openjdk-headless \
+    ca-certificates bash git curl shadow-utils libstdc++ libatomic java-17-openjdk-devel \
     && dnf clean all && rm -rf /var/cache/dnf
 
 # 1. Copy Docker/K8s/Helm from official static images
@@ -46,18 +51,18 @@ COPY --from=registry.k8s.io/kubectl:v1.32.0 /bin/kubectl /usr/local/bin/kubectl
 COPY --from=docker.io/alpine/helm:4.1.1 /usr/bin/helm /usr/bin/helm
 COPY --from=docker.io/stackrox/kube-linter:v0.8.3 /kube-linter /usr/local/bin/kube-linter
 
-# 2. Copy tools from binfetch (Now includes Black Duck)
+# 2. Copy tools from binfetch
 COPY --from=binfetch /usr/local/bin/argocd /usr/local/bin/argocd
 COPY --from=binfetch /usr/local/bin/kind /usr/local/bin/kind
 COPY --from=binfetch /usr/local/bin/kustomize /usr/local/bin/kustomize
 COPY --from=binfetch /usr/local/bin/blackduck /usr/local/bin/blackduck
+COPY --from=binfetch /usr/local/bin/roxctl /usr/local/bin/roxctl
 
 # 3. Copy our "Truly Single" Binaries
 COPY --from=builder /build/newman_bin /usr/local/bin/newman
 
 ARG BRUNO_VERSION=3.3.0
 ARG MAVEN_VERSION=3.9.9
-ARG ROXCTL_VERSION=4.4.0
 
 # Install remaining package-based utilities
 RUN dnf -y install --setopt=install_weak_deps=False \
@@ -71,11 +76,6 @@ RUN npm config set update-notifier false && \
     npm config set audit false && \
     npm install -g --prefix /usr/local @usebruno/cli@${BRUNO_VERSION} && \
     npm cache clean --force
-
-# Roxctl
-RUN curl -fsSL -o /usr/local/bin/roxctl \
-    "https://mirror.openshift.com/pub/rhacs/assets/${ROXCTL_VERSION}/bin/Linux/roxctl" && \
-    chmod +x /usr/local/bin/roxctl
 
 RUN chmod +x /usr/local/bin/*
 ENV PATH="/usr/local/bin:${PATH}"
