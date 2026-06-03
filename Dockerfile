@@ -1,8 +1,6 @@
 # Stage 1: Build the Single-File Binaries
 FROM oven/bun:1.2 AS builder
-
 ARG NEWMAN_VERSION=6.2.2
-
 WORKDIR /build
 
 # 1. Install Node.js & pkg (Needed because Bun can't bundle Newman's dynamic deps)
@@ -34,16 +32,19 @@ RUN curl -fsSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/mast
 # Stage 3: Final Production Image
 FROM fedora:44
 
-# Essential runtime libs only (NO NODEJS NEEDED!)
+# Essential runtime libs only + Java (Required for Maven & Black Duck Detect)
 RUN dnf -y install --setopt=install_weak_deps=False \
-    ca-certificates bash git curl shadow-utils libstdc++ libatomic \
+    ca-certificates bash git curl shadow-utils libstdc++ libatomic java-17-openjdk-headless \
     && dnf clean all && rm -rf /var/cache/dnf
 
 # 1. Copy Docker/K8s/Helm from official static images
 COPY --from=docker.io/library/docker:26-cli /usr/local/bin/docker /usr/local/bin/docker
 COPY --from=registry.k8s.io/kubectl:v1.32.0 /bin/kubectl /usr/local/bin/kubectl
-COPY --from=docker.io/alpine/helm:4.1.1 /usr/bin/helm /usr/local/bin/helm
+COPY --from=docker.io/alpine/helm:4.1.1 /usr/bin/helm /usr/bin/helm
 COPY --from=docker.io/stackrox/kube-linter:v0.8.3 /kube-linter /usr/local/bin/kube-linter
+
+# ADDED: Copy Black Duck Synopsys Detect wrapper script from the official image
+COPY --from=blackducksoftware/detect:9.10.0 /detect.sh /usr/local/bin/blackduck
 
 # 2. Copy tools from binfetch
 COPY --from=binfetch /usr/local/bin/argocd /usr/local/bin/argocd
@@ -56,14 +57,14 @@ COPY --from=builder /build/newman_bin /usr/local/bin/newman
 ARG BRUNO_VERSION=3.3.0
 ARG MAVEN_VERSION=3.9.9
 ARG ROXCTL_VERSION=4.4.0
-ARG BLACKDUCK_VERSION=latest
 
+# Install remaining package-based utilities
 RUN dnf -y install --setopt=install_weak_deps=False \
-    ca-certificates bash git curl shadow-utils libstdc++ libatomic \
     nodejs npm \
     maven \
     && dnf clean all && rm -rf /var/cache/dnf
 
+# Install Bruno CLI
 RUN npm config set update-notifier false && \
     npm config set fund false && \
     npm config set audit false && \
