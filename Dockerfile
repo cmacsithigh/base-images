@@ -48,7 +48,7 @@ FROM fedora:44
 
 # Essential runtime libs only
 RUN dnf -y install --setopt=install_weak_deps=False \
-    ca-certificates bash git curl shadow-utils libstdc++ libatomic \
+    ca-certificates bash git curl shadow-utils shadow-utils-subid libstdc++ libatomic \
     && dnf clean all && rm -rf /var/cache/dnf
 
 # 1. Copy Docker/K8s/Helm from official static images
