@@ -48,7 +48,7 @@ FROM fedora:44
 
 # Essential runtime libs only
 RUN dnf -y install --setopt=install_weak_deps=False \
-    ca-certificates bash git curl shadow-utils shadow-utils-subid libstdc++ libatomic \
+    ca-certificates bash git curl podman shadow-utils shadow-utils-subid libstdc++ libatomic \
     && dnf clean all && rm -rf /var/cache/dnf
 
 # 1. Copy Docker/K8s/Helm from official static images
@@ -56,7 +56,6 @@ COPY --from=docker.io/library/docker:26-cli /usr/local/bin/docker /usr/local/bin
 COPY --from=registry.k8s.io/kubectl:v1.32.0 /bin/kubectl /usr/local/bin/kubectl
 COPY --from=docker.io/alpine/helm:4.1.1 /usr/bin/helm /usr/local/bin/helm
 COPY --from=docker.io/stackrox/kube-linter:v0.8.3 /kube-linter /usr/local/bin/kube-linter
-COPY --from=quay.io/podman/stable:v5.2 /usr/bin/podman /usr/local/bin/podman
 COPY --from=quay.io/openshift/origin-cli:4.20 /usr/bin/oc /usr/local/bin/oc
 COPY --from=quay.io/skopeo/stable:v1.16 /usr/bin/skopeo /usr/local/bin/skopeo
 
