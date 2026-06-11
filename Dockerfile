@@ -48,7 +48,7 @@ FROM fedora:44
 
 # Essential runtime libs only
 RUN dnf -y install --setopt=install_weak_deps=False \
-    ca-certificates bash git curl podman shadow-utils shadow-utils-subid libstdc++ libatomic \
+    ca-certificates bash git curl podman buildah shadow-utils shadow-utils-subid libstdc++ libatomic \
     && dnf clean all && rm -rf /var/cache/dnf
 
 # 1. Copy Docker/K8s/Helm from official static images
@@ -93,6 +93,18 @@ RUN ln -s /usr/lib/jvm/openjdk-17/bin/* /usr/local/bin/
 ENV JAVA_HOME=/usr/lib/jvm/openjdk-17
 ENV PATH="${JAVA_HOME}/bin:/usr/local/bin:${PATH}"
 
+# Rootless Buildah-friendly setup
+RUN useradd -m -u 10000 -s /bin/bash build && \
+    touch /etc/subuid /etc/subgid && \
+    echo build:10000:65536 > /etc/subuid && \
+    echo build:10000:65536 > /etc/subgid && \
+    chmod g=u /etc/subuid /etc/subgid /etc/passwd && \
+    mkdir -p /home/build/.config/containers /workspace && \
+    chown -R build:build /home/build /workspace
+
+RUN printf '%s\n' 'export BUILDAH_ISOLATION=chroot' >> /home/build/.bashrc && \
+    printf '%s\n' '[storage]' 'driver = "vfs"' > /home/build/.config/containers/storage.conf
+
 RUN chmod +x /usr/local/bin/*
 
 # Validation
@@ -108,10 +120,12 @@ RUN docker --version; \
     java -version; \
     mvn -version; \
     podman --version; \
+    buildah --version; \
     oc version --client || true; \
     skopeo --version || true; \
     roxctl version || true; \
     blackduck --help || true
 
-WORKDIR /workspace
+USER build
+WORKDIR /home/build
 CMD ["bash"]
