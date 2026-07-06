@@ -77,7 +77,7 @@ ARG MAVEN_VERSION=3.9.9
 
 # Install remaining package-based utilities
 RUN dnf -y install --setopt=install_weak_deps=False \
-    nodejs npm \
+    nodejs npm curl jq yq \
     maven \
     && dnf clean all && rm -rf /var/cache/dnf
 
