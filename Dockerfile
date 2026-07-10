@@ -95,6 +95,7 @@ RUN npm install -g \
       conventional-changelog-conventionalcommits@9 \
       @semantic-release/release-notes-generator@14 \
       @semantic-release/gitlab@13 \
+      @semantic-release/exec@7 \
       @semantic-release/commit-analyzer@13
 
 # Symlink OpenJDK binaries to systemic path and export environment variables
