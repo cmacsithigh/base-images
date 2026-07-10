@@ -91,10 +91,11 @@ RUN npm config set update-notifier false && \
     npm cache clean --force
 
 RUN npm install -g \
-      semantic-release\
-      conventional-changelog-conventionalcommits \
-      semantic-release/release-notes-generator \
-      semantic-release/gitlab
+      semantic-release \
+      @conventional-changelog-conventionalcommits \
+      @semantic-release/release-notes-generator \
+      @semantic-release/gitlab \
+      @semantic-release/commit-analyzer
 
 # Symlink OpenJDK binaries to systemic path and export environment variables
 RUN ln -s /usr/lib/jvm/openjdk-17/bin/* /usr/local/bin/
