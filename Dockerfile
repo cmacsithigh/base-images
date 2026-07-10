@@ -92,7 +92,7 @@ RUN npm config set update-notifier false && \
 
 RUN npm install -g \
       semantic-release \
-      @conventional-changelog-conventionalcommits \
+      conventional-changelog-conventionalcommits \
       @semantic-release/release-notes-generator \
       @semantic-release/gitlab \
       @semantic-release/commit-analyzer
