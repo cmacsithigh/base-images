@@ -1,6 +1,11 @@
 # Stage 1: Build the Single-File Binaries
 FROM oven/bun:1.3 AS builder
+
 ARG NEWMAN_VERSION=6.2.2
+ARG SEMANTIC_RELEASE_VERSION=24.2.1
+ARG SEMANTIC_RELEASE_PLUGIN_GITLAB_VERSION=13.3.3
+ARG SEMANTIC_RELEASE_PLUGIN_COMMITS_VERSION=8.0.0
+
 WORKDIR /build
 
 # 1. Install Node.js & pkg (Needed because Bun can't bundle Newman's dynamic deps)
@@ -87,6 +92,11 @@ RUN npm config set update-notifier false && \
     npm config set audit false && \
     npm install -g --prefix /usr/local @usebruno/cli@${BRUNO_VERSION} && \
     npm cache clean --force
+
+RUN npm install -g \
+      semantic-release@${SEMANTIC_RELEASE_VERSION} \
+      conventional-changelog-conventionalcommits@${SEMANTIC_RELEASE_PLUGIN_COMMITS_VERSION} \
+      semantic-release/gitlab@${SEMANTIC_RELEASE_PLUGIN_GITLAB_VERSION}
 
 # Symlink OpenJDK binaries to systemic path and export environment variables
 RUN ln -s /usr/lib/jvm/openjdk-17/bin/* /usr/local/bin/
