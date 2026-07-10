@@ -90,7 +90,7 @@ RUN npm config set update-notifier false && \
     npm install -g --prefix /usr/local @usebruno/cli@${BRUNO_VERSION} && \
     npm cache clean --force
 
-RUN npm install \
+RUN npm install -g \
       semantic-release \
       conventional-changelog-conventionalcommits@9 \
       @semantic-release/release-notes-generator@14 \
