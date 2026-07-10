@@ -95,9 +95,9 @@ cd semantic-release && \
     npm install \
       semantic-release \
       conventional-changelog-conventionalcommits@9 \
-      @semantic-release/release-notes-generator \
-      @semantic-release/gitlab \
-      @semantic-release/commit-analyzer
+      @semantic-release/release-notes-generator@14 \
+      @semantic-release/gitlab@13 \
+      @semantic-release/commit-analyzer@13
 
 ENV PATH="/semantic-release/node_modules/.bin:$PATH"
 ENV NODE_PATH="/semantic-release/node_modules"
