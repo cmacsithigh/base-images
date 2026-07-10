@@ -2,9 +2,6 @@
 FROM oven/bun:1.3 AS builder
 
 ARG NEWMAN_VERSION=6.2.2
-ARG SEMANTIC_RELEASE_VERSION=24.2.1
-ARG SEMANTIC_RELEASE_PLUGIN_GITLAB_VERSION=13.3.3
-ARG SEMANTIC_RELEASE_PLUGIN_COMMITS_VERSION=8.0.0
 
 WORKDIR /build
 
@@ -94,9 +91,10 @@ RUN npm config set update-notifier false && \
     npm cache clean --force
 
 RUN npm install -g \
-      semantic-release@${SEMANTIC_RELEASE_VERSION} \
-      conventional-changelog-conventionalcommits@${SEMANTIC_RELEASE_PLUGIN_COMMITS_VERSION} \
-      semantic-release/gitlab${SEMANTIC_RELEASE_PLUGIN_GITLAB_VERSION}
+      semantic-release\
+      conventional-changelog-conventionalcommits \
+      semantic-release/release-notes-generator \
+      semantic-release/gitlab
 
 # Symlink OpenJDK binaries to systemic path and export environment variables
 RUN ln -s /usr/lib/jvm/openjdk-17/bin/* /usr/local/bin/
