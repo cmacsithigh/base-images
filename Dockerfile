@@ -90,12 +90,17 @@ RUN npm config set update-notifier false && \
     npm install -g --prefix /usr/local @usebruno/cli@${BRUNO_VERSION} && \
     npm cache clean --force
 
-RUN npm install -g \
+RUN mkdir semantic-release && \
+cd semantic-release && \
+    npm install \
       semantic-release \
       conventional-changelog-conventionalcommits \
       @semantic-release/release-notes-generator \
       @semantic-release/gitlab \
       @semantic-release/commit-analyzer
+
+ENV PATH="/semantic-release/node_modules/.bin:$PATH"
+ENV NODE_PATH="/semantic-release/node_modules"
 
 # Symlink OpenJDK binaries to systemic path and export environment variables
 RUN ln -s /usr/lib/jvm/openjdk-17/bin/* /usr/local/bin/
