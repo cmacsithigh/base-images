@@ -94,7 +94,7 @@ RUN mkdir semantic-release && \
 cd semantic-release && \
     npm install \
       semantic-release \
-      conventional-changelog-conventionalcommits \
+      conventional-changelog-conventionalcommits@9 \
       @semantic-release/release-notes-generator \
       @semantic-release/gitlab \
       @semantic-release/commit-analyzer
