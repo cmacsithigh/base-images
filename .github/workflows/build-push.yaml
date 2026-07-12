@@ -40,7 +40,7 @@ jobs:
 
       - name: Build and push
         if: steps.semantic_dry_run.outputs.new_release_published == 'true'
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           push: true
