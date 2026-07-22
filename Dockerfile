@@ -15,7 +15,7 @@ RUN npm install -g pkg && \
     pkg ./node_modules/newman/bin/newman.js --targets node18-linux-x64 --output newman_bin
 
 # Stage 2: Binary Fetcher (Static Go-based tools & Scripts)
-FROM fedora:44 AS binfetch
+FROM fedora:45 AS binfetch
 RUN dnf -y install ca-certificates curl tar gzip && dnf clean all
 
 ARG ARGOCD_VERSION=v3.3.8
@@ -46,7 +46,7 @@ RUN mkdir -p /usr/lib/jvm/openjdk-17 && \
     tar -xzf - --strip-components=1 -C /usr/lib/jvm/openjdk-17
 
 # Stage 3: Final Production Image
-FROM fedora:44
+FROM fedora:45
 
 # Essential runtime libs only
 RUN dnf -y install --setopt=install_weak_deps=False \
