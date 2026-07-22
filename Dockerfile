@@ -59,7 +59,7 @@ COPY --from=registry.k8s.io/kubectl:v1.32.0 /bin/kubectl /usr/local/bin/kubectl
 COPY --from=docker.io/alpine/helm:4.2.2 /usr/bin/helm /usr/local/bin/helm
 COPY --from=docker.io/stackrox/kube-linter:v0.8.3 /kube-linter /usr/local/bin/kube-linter
 COPY --from=quay.io/openshift/origin-cli:4.20 /usr/bin/oc /usr/local/bin/oc
-COPY --from=quay.io/skopeo/stable:v1.16 /usr/bin/skopeo /usr/local/bin/skopeo
+COPY --from=quay.io/skopeo/stable:v1.22 /usr/bin/skopeo /usr/local/bin/skopeo
 
 # 2. Copy tools from binfetch (Includes Black Duck and Roxctl)
 COPY --from=binfetch /usr/local/bin/argocd /usr/local/bin/argocd
