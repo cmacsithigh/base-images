@@ -1,5 +1,4 @@
-# Stage 2: Binary Fetcher (Static Go-based tools & Scripts)
-FROM fedora:44 AS binfetch
+# Stage 2: Binary Fetcher (Static Go-based tools & Scripts)FROM fedora:44 AS binfetch
 RUN dnf -y install ca-certificates curl tar gzip && dnf clean all
 
 ARG KIND_VERSION=v0.33.0
@@ -26,8 +25,8 @@ RUN chmod +x /usr/local/bin/*
 
 # Validation
 RUN kind version; \
-    kustomize version; \
+    kustomize version
 
-    USER build
+USER build
 WORKDIR /home/build
 CMD ["bash"]
