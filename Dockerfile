@@ -1,4 +1,5 @@
-# Stage 2: Binary Fetcher (Static Go-based tools & Scripts)FROM fedora:44 AS binfetch
+FROM fedora:44 as binfetch
+
 RUN dnf -y install ca-certificates curl tar gzip && dnf clean all
 
 ARG KIND_VERSION=v0.33.0
