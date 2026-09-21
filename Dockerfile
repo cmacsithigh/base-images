@@ -1,4 +1,4 @@
-FROM fedora:44 as binfetch
+FROM fedora:46 as binfetch
 
 RUN dnf -y install ca-certificates curl tar gzip && dnf clean all
 
@@ -12,7 +12,7 @@ RUN curl -fsSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/mast
     chmod +x /usr/local/bin/kustomize
 
 # Stage 3: Final Production Image
-FROM fedora:44
+FROM fedora:46
 
 # Essential runtime libs only
 RUN dnf -y install --setopt=install_weak_deps=False \
